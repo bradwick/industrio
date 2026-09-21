@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Industrio - Industrial Age Factory Simulator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+    }
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .hud-panel {
+      position: absolute;
+      background: rgba(30, 30, 35, 0.9);
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+    #top-bar {
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .top-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    #build-sidebar {
+      top: 60px;
+      right: 10px;
+      width: 260px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    .build-btn {
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background: #2a2d32;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s;
+    }
+    .build-btn:hover {
+      background: #3a3f47;
+    }
+    .build-btn.active {
+      border-color: #f39c12;
+      background: #4a4020;
+    }
+    #start-modal, #inspect-modal, #tech-modal, #save-modal {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 450px;
+      max-height: 80vh;
+      overflow-y: auto;
+      background: rgba(25, 25, 30, 0.95);
+      border: 2px solid #f39c12;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 100;
+    }
+    #start-modal {
+      display: block; /* Shown by default */
+      text-align: center;
+    }
+    .btn {
+      padding: 8px 16px;
+      background: #f39c12;
+      color: #111;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #e67e22;
+    }
+    .close-btn {
+      float: right;
+      cursor: pointer;
+      font-weight: bold;
+      color: #aaa;
+    }
+    .close-btn:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- Game Start / Map Size Modal -->
+  <div id="start-modal">
+    <h2 style="color: #f39c12; margin-bottom: 10px;">🏭 Industrio</h2>
+    <p style="color: #ccc; margin-bottom: 20px; font-size: 14px;">Select world map size to begin your industrial empire:</p>
+    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+      <button class="btn" id="btn-map-small">Small (60x60)</button>
+      <button class="btn" id="btn-map-medium">Medium (100x100)</button>
+      <button class="btn" id="btn-map-large">Large (150x150)</button>
+    </div>
+  </div>
+
+  <!-- Top Bar Stats & Controls -->
+  <div id="top-bar" class="hud-panel">
+    <div style="display: flex; gap: 20px;">
+      <div class="top-stat">⚙️ <span>Industrio</span></div>
+      <div class="top-stat">👥 Workers: <span id="stat-workers">0/0</span></div>
+      <div class="top-stat">🍞 Food: <span id="stat-food">No</span></div>
+      <div class="top-stat">💧 Water: <span id="stat-water">No</span></div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button id="btn-speed-pause" class="btn" style="padding: 4px 8px;">⏸️</button>
+      <button id="btn-speed-1" class="btn" style="padding: 4px 8px; background: #e67e22;">1x</button>
+      <button id="btn-speed-2" class="btn" style="padding: 4px 8px;">2x</button>
+      <button id="btn-speed-4" class="btn" style="padding: 4px 8px;">4x</button>
+      <button id="btn-open-tech" class="btn">🔬 Tech Tree</button>
+      <button id="btn-open-save" class="btn">💾 Save/Load</button>
+    </div>
+  </div>
+
+  <!-- Build Sidebar -->
+  <div id="build-sidebar" class="hud-panel">
+    <h3 style="margin-bottom: 10px; color: #f39c12;">Construction</h3>
+    <div id="building-list"></div>
+    <div style="margin-top: 10px; font-size: 12px; color: #888;">
+      Press <b>R</b> to rotate selected building.<br/>
+      Right-click / ESC to cancel selection.
+    </div>
+  </div>
+
+  <!-- Inspection Modal -->
+  <div id="inspect-modal">
+    <span class="close-btn" id="close-inspect">&times;</span>
+    <h3 id="inspect-title" style="color: #f39c12; margin-bottom: 10px;">Building Info</h3>
+    <div id="inspect-body"></div>
+  </div>
+
+  <!-- Tech Tree Modal -->
+  <div id="tech-modal">
+    <span class="close-btn" id="close-tech">&times;</span>
+    <h3 style="color: #f39c12; margin-bottom: 10px;">Industrial Research Tree</h3>
+    <div id="tech-list"></div>
+  </div>
+
+  <!-- Save / Load Modal -->
+  <div id="save-modal">
+    <span class="close-btn" id="close-save">&times;</span>
+    <h3 style="color: #f39c12; margin-bottom: 10px;">Save / Load Game</h3>
+    <div style="margin-bottom: 15px;">
+      <input type="text" id="save-filename" value="factory_save.json" style="width: 70%; padding: 6px; border-radius: 4px; border: 1px solid #555; background: #222; color: #fff;" />
+      <button id="btn-save-server" class="btn">Save</button>
+    </div>
+    <h4>Server Saves</h4>
+    <div id="server-saves-list" style="margin-top: 10px; max-height: 150px; overflow-y: auto;"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
