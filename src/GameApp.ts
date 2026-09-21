@@ -87,27 +87,54 @@ export class GameApp {
     for (let y = 0; y < this.sim.map.height; y++) {
       for (let x = 0; x < this.sim.map.width; x++) {
         const tile = this.sim.map.tiles[y][x];
-        let color = 0x2c3e50; // base ground
+        const px = x * TILE_SIZE;
+        const py = y * TILE_SIZE;
 
         if (tile.isWaterTile) {
-          color = 0x2980b9;
-        } else if (tile.resource === 'iron_ore') {
-          color = 0x8b5a2b;
-        } else if (tile.resource === 'copper_ore') {
-          color = 0xb87333;
-        } else if (tile.resource === 'coal') {
-          color = 0x111111;
-        } else if (tile.resource === 'stone') {
-          color = 0x7f8c8d;
-        } else if (tile.resource === 'wood') {
-          color = 0x27ae60;
-        } else if (tile.resource === 'fertile') {
-          color = 0xd4ac0d;
-        }
+          // Water tile
+          g.rect(px, py, TILE_SIZE, TILE_SIZE);
+          g.fill(0x2980b9);
+          // Water wave details
+          g.moveTo(px + 4, py + 12).lineTo(px + 12, py + 12);
+          g.moveTo(px + 18, py + 22).lineTo(px + 26, py + 22);
+          g.stroke({ width: 2, color: 0x5dade2, alpha: 0.6 });
+        } else {
+          // Base grass/dirt
+          g.rect(px, py, TILE_SIZE, TILE_SIZE);
+          g.fill(0x2e4053);
+          g.stroke({ width: 1, color: 0x212f3d, alpha: 0.4 });
 
-        g.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        g.fill(color);
-        g.stroke({ width: 1, color: 0x1a252f, alpha: 0.3 });
+          // Resource features
+          if (tile.resource === 'iron_ore') {
+            g.circle(px + 8, py + 12, 5);
+            g.circle(px + 22, py + 20, 6);
+            g.fill(0x8b5a2b);
+          } else if (tile.resource === 'copper_ore') {
+            g.circle(px + 10, py + 10, 5);
+            g.circle(px + 20, py + 22, 6);
+            g.fill(0xb87333);
+          } else if (tile.resource === 'coal') {
+            g.rect(px + 6, py + 6, 8, 8);
+            g.rect(px + 18, py + 16, 9, 9);
+            g.fill(0x111111);
+          } else if (tile.resource === 'stone') {
+            g.circle(px + 10, py + 16, 6);
+            g.circle(px + 22, py + 10, 5);
+            g.fill(0x7f8c8d);
+          } else if (tile.resource === 'wood') {
+            // Tree trunk & foliage
+            g.rect(px + 13, py + 18, 6, 10);
+            g.fill(0x5c4033);
+            g.circle(px + 16, py + 12, 9);
+            g.fill(0x27ae60);
+          } else if (tile.resource === 'fertile') {
+            // Grain crop rows
+            g.rect(px + 4, py + 6, 4, 20);
+            g.rect(px + 14, py + 6, 4, 20);
+            g.rect(px + 24, py + 6, 4, 20);
+            g.fill(0xd4ac0d);
+          }
+        }
       }
     }
     this.gridContainer.addChild(g);
@@ -130,19 +157,105 @@ export class GameApp {
 
       const px = bldg.x * TILE_SIZE;
       const py = bldg.y * TILE_SIZE;
-
       const isInspected = this.inspectedBuilding?.id === bldg.id;
 
+      // Base building footprint background
       g.rect(px + 1, py + 1, w - 2, h - 2);
       g.fill(def.color);
-      g.stroke({ width: isInspected ? 3 : 2, color: isInspected ? 0xf1c40f : 0xffffff });
+      g.stroke({ width: isInspected ? 3 : 1, color: isInspected ? 0xf1c40f : 0x000000 });
 
-      // Grabber / Loader rotation marker
-      if (def.isLoader) {
-        let arrowX = px + w / 2;
-        let arrowY = py + h / 2;
-        g.circle(arrowX, arrowY, 4);
-        g.fill(0xffd700);
+      // Detailed procedural building features
+      if (def.isRoad) {
+        if (bldg.defId === 'dirt_road') {
+          // Dirt track grooves
+          g.rect(px + 4, py + 12, w - 8, 8);
+          g.fill(0x8b5a2b);
+        } else {
+          // Cobblestone paved grid
+          g.rect(px + 2, py + 2, w - 4, h - 4);
+          g.stroke({ width: 1, color: 0x333333 });
+        }
+      } else if (def.isRail) {
+        // Wooden ties
+        for (let i = 4; i < h; i += 8) {
+          g.rect(px + 4, py + i, w - 8, 3);
+          g.fill(0x5c4033);
+        }
+        // Dual parallel steel rails
+        g.rect(px + 8, py, 3, h);
+        g.rect(px + w - 11, py, 3, h);
+        g.fill(0xbdc3c7);
+      } else if (def.isLoader) {
+        // Mechanical Grabber base & articulated arm
+        g.circle(px + w / 2, py + h / 2, 8);
+        g.fill(0x34495e);
+        g.circle(px + w / 2, py + h / 2, 4);
+        g.fill(0xf1c40f);
+
+        // Direction pointer
+        let dx = 0, dy = 0;
+        if (bldg.rotation === 0) dy = -10;
+        else if (bldg.rotation === 90) dx = 10;
+        else if (bldg.rotation === 180) dy = 10;
+        else if (bldg.rotation === 270) dx = -10;
+
+        g.moveTo(px + w / 2, py + h / 2);
+        g.lineTo(px + w / 2 + dx, py + h / 2 + dy);
+        g.stroke({ width: 3, color: 0xe67e22 });
+      } else if (bldg.defId === 'boiler') {
+        // Boiler firebox & chimney
+        g.rect(px + 6, py + 6, w - 12, h - 12);
+        g.fill(0x2c3e50);
+        // Firebox glowing orange
+        g.rect(px + 12, py + h - 16, w - 24, 8);
+        g.fill(0xe67e22);
+        // Smokestack
+        g.circle(px + 14, py + 14, 6);
+        g.fill(0x111111);
+      } else if (bldg.defId === 'furnace') {
+        // Stone furnace brick arch & hearth fire
+        g.rect(px + 4, py + 4, w - 8, h - 8);
+        g.fill(0x6e2c00);
+        g.rect(px + 10, py + 12, w - 20, h - 20);
+        g.fill(0x111111);
+        if (bldg.isWorking) {
+          g.rect(px + 12, py + 14, w - 24, h - 24);
+          g.fill(0xf39c12);
+        }
+      } else if (bldg.defId === 'worker_cottage') {
+        // Pitched roof, door & window
+        g.moveTo(px + 4, py + h / 2);
+        g.lineTo(px + w / 2, py + 4);
+        g.lineTo(px + w - 4, py + h / 2);
+        g.fill(0x78281f);
+        // Window
+        g.rect(px + 8, py + h / 2 + 4, 8, 8);
+        g.fill(0xf1c40f);
+        // Door
+        g.rect(px + w - 18, py + h - 16, 10, 14);
+        g.fill(0x4a235a);
+      } else if (bldg.defId === 'steam_drill') {
+        // Metal frame & center drill head
+        g.rect(px + 6, py + 6, w - 12, h - 12);
+        g.stroke({ width: 2, color: 0x111111 });
+        g.rect(px + w / 2 - 4, py + h / 2 - 8, 8, 16);
+        g.fill(0x95a5a6);
+      } else if (bldg.defId === 'research_lab') {
+        // Grand blue dome
+        g.circle(px + w / 2, py + h / 2, Math.min(w, h) / 3);
+        g.fill(0x2980b9);
+        g.stroke({ width: 2, color: 0xffffff });
+      } else if (bldg.defId === 'water_well') {
+        // Cobblestone circle & wooden arch
+        g.circle(px + w / 2, py + h / 2, 10);
+        g.fill(0x2980b9);
+        g.stroke({ width: 3, color: 0x7f8c8d });
+      } else if (def.isCaravanDepot || def.isTrainStation || bldg.defId === 'transcontinental_terminal') {
+        // Depot / station canopy structure
+        g.rect(px + 4, py + 4, w - 8, h - 8);
+        g.stroke({ width: 2, color: 0xf39c12 });
+        g.rect(px + 8, py + 8, w - 16, 8);
+        g.fill(0x34495e);
       }
     }
     this.buildingsContainer.addChild(g);
@@ -152,20 +265,69 @@ export class GameApp {
     this.workersContainer.removeChildren();
     this.vehiclesContainer.removeChildren();
 
+    // Render Little Worker Men Sprites
     const gW = new PIXI.Graphics();
     for (const w of this.sim.workers) {
-      gW.circle(w.x * TILE_SIZE + 16, w.y * TILE_SIZE + 16, 5);
-      gW.fill(0xf39c12);
-      gW.stroke({ width: 1, color: 0x000000 });
+      const wx = w.x * TILE_SIZE + 16;
+      const wy = w.y * TILE_SIZE + 16;
+
+      // Body / Shirt (Blue/Brown)
+      gW.rect(wx - 4, wy - 2, 8, 10);
+      gW.fill(0x2980b9);
+
+      // Head (Skin Tone)
+      gW.circle(wx, wy - 6, 4);
+      gW.fill(0xf5cba7);
+
+      // Flat Cap / Hat (Industrial Worker Cap)
+      gW.rect(wx - 5, wy - 10, 10, 3);
+      gW.fill(0x4a235a);
+
+      // Legs
+      gW.rect(wx - 3, wy + 8, 2, 5);
+      gW.rect(wx + 1, wy + 8, 2, 5);
+      gW.fill(0x1a252f);
     }
     this.workersContainer.addChild(gW);
 
+    // Render Vehicles (Caravans & Steam Locomotives)
     const gV = new PIXI.Graphics();
     for (const v of this.sim.vehicles) {
-      const color = v.type === 'train' ? 0xc0392b : 0x8e44ad;
-      gV.rect(v.x * TILE_SIZE + 8, v.y * TILE_SIZE + 8, 16, 16);
-      gV.fill(color);
-      gV.stroke({ width: 1, color: 0xffffff });
+      const vx = v.x * TILE_SIZE + 16;
+      const vy = v.y * TILE_SIZE + 16;
+
+      if (v.type === 'caravan') {
+        // Horse (brown head & body) pulling a wooden wagon
+        // Wagon box
+        gV.rect(vx - 10, vy - 6, 12, 12);
+        gV.fill(0x8b5a2b);
+        gV.stroke({ width: 1, color: 0x000000 });
+        // Wagon wheels
+        gV.circle(vx - 8, vy + 6, 3);
+        gV.circle(vx + 0, vy + 6, 3);
+        gV.fill(0x111111);
+        // Horse body
+        gV.rect(vx + 4, vy - 4, 8, 8);
+        gV.fill(0xa0522d);
+      } else if (v.type === 'train') {
+        // Steam Locomotive
+        // Boiler cylinder
+        gV.rect(vx - 12, vy - 6, 18, 12);
+        gV.fill(0x2c3e50);
+        // Cabin
+        gV.rect(vx + 4, vy - 10, 10, 16);
+        gV.fill(0xc0392b);
+        // Smokestack & Steam Puff
+        gV.rect(vx - 10, vy - 11, 4, 5);
+        gV.fill(0x111111);
+        gV.circle(vx - 8, vy - 14, 3);
+        gV.fill({ color: 0xecf0f1, alpha: 0.8 });
+        // Train wheels
+        gV.circle(vx - 8, vy + 6, 4);
+        gV.circle(vx + 2, vy + 6, 4);
+        gV.circle(vx + 10, vy + 6, 4);
+        gV.fill(0x7f8c8d);
+      }
     }
     this.vehiclesContainer.addChild(gV);
   }
